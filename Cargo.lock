@@ -184,6 +184,8 @@ name = "database-lib"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "domain",
+ "serde",
  "sqlx",
  "thiserror",
  "tokio",
@@ -222,6 +224,16 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "domain"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "serde",
+ "sqlx",
+ "uuid",
 ]
 
 [[package]]

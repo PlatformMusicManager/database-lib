@@ -1,13 +1,14 @@
 use chrono::{DateTime, Utc};
+use domain::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
+use domain::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
+use domain::db::user::{UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
+use sqlx::types::Json;
 use uuid::Uuid;
 
 use crate::errors::session::{SessionCreationError, SessionUpdateError};
 use crate::errors::user::UserCreationError;
-use crate::models::deezer::{AlbumInputDeezer, AuthorInputDeezer};
-use crate::models::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
-use crate::models::user::UserTable;
 
 type SqlxResult<T> = Result<T, sqlx::Error>;
 
@@ -103,6 +104,17 @@ impl PostgresDb {
             .await?;
 
         Ok(user)
+    }
+
+    pub async fn get_user_with_playlists(&self, id: i64) -> SqlxResult<Option<UserWithPlaylists>> {
+        let user_record: Option<(Json<UserWithPlaylists>,)> = sqlx::query_as(
+            "SELECT get_user_with_playlists_json($1)"
+        )
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(user_record.map(|(json_wrapper,)| json_wrapper.0))
     }
 
     pub async fn update_password_hash(&self, id: i64, password_hash: &str) -> sqlx::Result<()> {

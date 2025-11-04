@@ -19,3 +19,5 @@ uuid = { version = "1", features = [
     "serde"      # Good practice for serialization
 ] }
 thiserror = "2.0.17"
+serde = "1.0.228"
+domain = { path = "../domain" }
