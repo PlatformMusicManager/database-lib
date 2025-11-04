@@ -85,8 +85,8 @@ impl PostgresDb {
         password_hash: String,
     ) -> SqlxResult<Result<i64, UserCreationError>> {
         let result: i64 = sqlx::query_scalar("SELECT add_user($1, $2, $3)")
-            .bind(username)
             .bind(email)
+            .bind(username)
             .bind(password_hash)
             .fetch_one(&self.pool)
             .await?;
