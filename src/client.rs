@@ -1,16 +1,22 @@
+use axum::http::StatusCode;
+use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
 use domain::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
 use domain::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
 use domain::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
+use sqlx::spec_error::SpecErrorWrapper;
 use sqlx::types::Json;
 use uuid::Uuid;
 
 use crate::errors::session::{SessionCreationError, SessionUpdateError};
+use crate::errors::sqlx_error::SqlxErrorWrapper;
 use crate::errors::user::UserCreationError;
 
-type SqlxResult<T> = Result<T, sqlx::Error>;
+type SqlxResult<T> = Result<T, SqlxErrorWrapper>;
+
+
 
 #[derive(Debug, Clone)]
 pub struct PostgresDb {
@@ -39,7 +45,7 @@ impl PostgresDb {
         Ok(())
     }
 
-    pub async fn record_listening_soundcloud(&self, track_id: i64) -> Result<bool, sqlx::Error> {
+    pub async fn record_listening_soundcloud(&self, track_id: i64) -> SqlxResult<bool> {
         let result: bool = sqlx::query_scalar("SELECT record_listen_soundcloud($1)")
             .bind(track_id)
             .fetch_one(&self.pool)

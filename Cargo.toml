@@ -21,3 +21,5 @@ uuid = { version = "1", features = [
 thiserror = "2.0.17"
 serde = "1.0.228"
 domain = { path = "../domain-lib" }
+axum = "0.8.6"
+serde_json = "1.0.145"
