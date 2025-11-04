@@ -1,7 +1,7 @@
 use chrono::{DateTime, Utc};
 use domain::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
 use domain::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
-use domain::db::user::{UserTable, UserWithPlaylists};
+use domain::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
 use sqlx::types::Json;
@@ -98,13 +98,40 @@ impl PostgresDb {
         }
     }
 
-    pub async fn get_user(&self, id: i64) -> SqlxResult<Option<UserTable>> {
+    pub async fn get_user_by_id(&self, id: i64) -> SqlxResult<Option<UserTable>> {
         let user = sqlx::query_as("SELECT * FROM app_user WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool) // Assuming `self.pool` is the database connection pool
             .await?;
 
         Ok(user)
+    }
+
+    pub async fn get_user_by_email(&self, email: String) -> SqlxResult<Option<UserTable>> {
+        let user = sqlx::query_as("SELECT * FROM app_user WHERE email = $1")
+            .bind(email)
+            .fetch_optional(&self.pool) // Assuming `self.pool` is the database connection pool
+            .await?;
+
+        Ok(user)
+    }
+
+    pub async fn check_is_user_exists(&self, username: String, email: String) -> SqlxResult<IsUserExistsRes> {
+        let is_exists: i16 = sqlx::query_scalar(
+            "SELECT get_user_with_playlists_json($1, $2)"
+        )
+            .bind(email)
+            .bind(username)
+            .fetch_one(&self.pool)
+            .await?;
+
+        match is_exists {
+            0 => Ok(IsUserExistsRes::NotExists),
+            1 => Ok(IsUserExistsRes::EmailExists),
+            2 => Ok(IsUserExistsRes::UsernameExists),
+            3 => Ok(IsUserExistsRes::EmailAndUsernameExists),
+            _ => panic!("Database return wrong data")
+        }
     }
 
     pub async fn get_user_with_playlists(&self, id: i64) -> SqlxResult<Option<UserWithPlaylists>> {
