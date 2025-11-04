@@ -12,6 +12,7 @@ use crate::errors::user::UserCreationError;
 
 type SqlxResult<T> = Result<T, sqlx::Error>;
 
+#[derive(Debug, Clone)]
 pub struct PostgresDb {
     pool: pool::Pool<Postgres>,
 }
