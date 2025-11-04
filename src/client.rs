@@ -17,7 +17,7 @@ pub struct PostgresDb {
 }
 
 impl PostgresDb {
-    pub async fn new(url: &str) -> Self {
+    pub async fn new(url: String) -> Self {
         Self {
             pool: PgPoolOptions::new().connect(&url).await.unwrap(),
         }
