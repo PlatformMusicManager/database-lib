@@ -20,4 +20,4 @@ uuid = { version = "1", features = [
 ] }
 thiserror = "2.0.17"
 serde = "1.0.228"
-domain = { path = "../domain" }
+domain = { path = "../domain-lib" }
