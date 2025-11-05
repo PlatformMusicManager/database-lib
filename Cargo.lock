@@ -301,12 +301,14 @@ dependencies = [
 name = "domain"
 version = "0.1.0"
 dependencies = [
+ "axum",
  "chrono",
  "redis",
  "redis-macros",
  "serde",
  "serde_json",
  "sqlx",
+ "thiserror",
  "uuid",
 ]
 

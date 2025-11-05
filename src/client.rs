@@ -1,22 +1,16 @@
-use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
 use chrono::{DateTime, Utc};
-use domain::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
-use domain::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
-use domain::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
+use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
+use domain::errors::db::sqlx_error::SqlxErrorWrapper;
+use domain::errors::db::user::UserCreationError;
+use domain::models::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
+use domain::models::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
+use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
-use sqlx::spec_error::SpecErrorWrapper;
 use sqlx::types::Json;
 use uuid::Uuid;
 
-use crate::errors::session::{SessionCreationError, SessionUpdateError};
-use crate::errors::sqlx_error::SqlxErrorWrapper;
-use crate::errors::user::UserCreationError;
-
 type SqlxResult<T> = Result<T, SqlxErrorWrapper>;
-
-
 
 #[derive(Debug, Clone)]
 pub struct PostgresDb {
