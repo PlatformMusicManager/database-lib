@@ -118,7 +118,7 @@ impl PostgresDb {
 
     pub async fn check_is_user_exists(&self, username: &str, email: &str) -> SqlxResult<IsUserExistsRes> {
         let is_exists: i16 = sqlx::query_scalar(
-            "SELECT get_user_with_playlists_json($1, $2)"
+            "SELECT check_is_user_exists($1, $2)"
         )
             .bind(email)
             .bind(username)
