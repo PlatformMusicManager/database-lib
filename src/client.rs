@@ -1,4 +1,5 @@
-use chrono::{DateTime, Utc};
+use std::ops::Add;
+use chrono::{DateTime, Duration, Utc};
 use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
 use domain::errors::db::sqlx_error::SqlxErrorWrapper;
 use domain::errors::db::user::UserCreationError;
@@ -15,12 +16,14 @@ type SqlxResult<T> = Result<T, SqlxErrorWrapper>;
 #[derive(Debug, Clone)]
 pub struct PostgresDb {
     pool: pool::Pool<Postgres>,
+    refresh_token_ttl: Duration,
 }
 
 impl PostgresDb {
-    pub async fn new(url: String) -> Self {
+    pub async fn new(url: String, refresh_token_ttl: Duration) -> Self {
         Self {
             pool: PgPoolOptions::new().connect(&url).await.unwrap(),
+            refresh_token_ttl,
         }
     }
 
@@ -160,11 +163,10 @@ impl PostgresDb {
     pub async fn add_session(
         &self,
         id: Uuid,
-        user_id: &str, // Using &str to match VARCHAR(18) in your SQL function
-        sn: Uuid,
-        expires_at: DateTime<Utc>,
-    ) -> SqlxResult<Option<SessionCreationError>> {
-        // We use query_scalar to fetch the single return value (a SMALLINT) from the function.
+        user_id: i64, // Using &str to match VARCHAR(18) in your SQL function
+        sn: Uuid
+    ) -> SqlxResult<Result<(), SessionCreationError>> {
+        let expires_at = Utc::now().add(self.refresh_token_ttl);
         let result_code: i16 = sqlx::query_scalar("SELECT add_session($1, $2, $3, $4)")
             .bind(id)
             .bind(user_id)
@@ -175,9 +177,9 @@ impl PostgresDb {
 
         match result_code {
             // A positive return value indicates success (it returns the new ID, which we ignore here)
-            0 => Ok(None),
-            -1 => Ok(Some(SessionCreationError::IdAlreadyExists)),
-            -2 => Ok(Some(SessionCreationError::UserNotFound)), // Handle -10 and any other unexpected codes
+            0 => Ok(Ok(())),
+            -1 => Ok(Err(SessionCreationError::IdAlreadyExists)),
+            -2 => Ok(Err(SessionCreationError::UserNotFound)), // Handle -10 and any other unexpected codes
             _ => panic!("UNEXPECTED RETURN VALUE"),
         }
     }
