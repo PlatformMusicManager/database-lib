@@ -207,4 +207,12 @@ impl PostgresDb {
             _ => panic!("UNEXPECTED RETURN VALUE"), // Handle any other unexpected codes
         }
     }
+    
+    pub async fn remove_session(&self, id: Uuid) -> SqlxResult<()> {
+        sqlx::query("DELETE FROM app_sessions WHERE id = $1;")
+            .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }
