@@ -187,10 +187,10 @@ impl PostgresDb {
     pub async fn extend_session(
         &self,
         id: Uuid,
-        new_sn: Uuid,
-        expires_at: DateTime<Utc>,
         old_sn: Uuid,
-    ) -> SqlxResult<Option<SessionUpdateError>> {
+        new_sn: Uuid,
+    ) -> SqlxResult<Result<(), SessionUpdateError>> {
+        let expires_at = Utc::now().add(self.refresh_token_ttl);
         let result_code: i16 = sqlx::query_scalar("SELECT extend_session($1, $2, $3, $4)")
             .bind(id)
             .bind(old_sn)
@@ -200,10 +200,10 @@ impl PostgresDb {
             .await?;
 
         match result_code {
-            0 => Ok(None),
-            1 => Ok(Some(SessionUpdateError::NotFound)),
-            2 => Ok(Some(SessionUpdateError::InvalidSerialNumber)),
-            3 => Ok(Some(SessionUpdateError::Expired)),
+            0 => Ok(Ok(())),
+            1 => Ok(Err(SessionUpdateError::NotFound)),
+            2 => Ok(Err(SessionUpdateError::InvalidSerialNumber)),
+            3 => Ok(Err(SessionUpdateError::Expired)),
             _ => panic!("UNEXPECTED RETURN VALUE"), // Handle any other unexpected codes
         }
     }
