@@ -3,8 +3,8 @@ use chrono::{DateTime, Duration, Utc};
 use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
 use domain::errors::db::sqlx_error::SqlxErrorWrapper;
 use domain::errors::db::user::UserCreationError;
-use domain::models::db::deezer::{AlbumInputDeezer, AuthorInputDeezer};
-use domain::models::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud};
+use domain::models::db::deezer::{AlbumInputDeezer, AlbumTableDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer, TrackTableDeezer};
+use domain::models::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud, TrackTableSoundcloud};
 use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
@@ -42,6 +42,16 @@ impl PostgresDb {
         Ok(())
     }
 
+    // pub async fn get_track_soundcloud(&self, track_id: i64) -> SqlxResult<Option<TrackTableSoundcloud>> {
+    //     let album = sqlx::query_as::<_, TrackTableSoundcloud>("SELECT * FROM tracks_soundcloud WHERE id = $1")
+    //         .bind(track_id)
+    //         .fetch_optional(&self.pool)
+    //         .await?;
+    //
+    //     Ok(album)
+    // }
+
+
     pub async fn record_listening_soundcloud(&self, track_id: i64) -> SqlxResult<bool> {
         let result: bool = sqlx::query_scalar("SELECT record_listen_soundcloud($1)")
             .bind(track_id)
@@ -56,7 +66,7 @@ impl PostgresDb {
         &self,
         author: &AuthorInputDeezer,
         album: &AlbumInputDeezer,
-        tracks: &[TrackInputSoundcloud],
+        tracks: &[TrackInputDeezer],
     ) -> SqlxResult<()> {
         sqlx::query("CALL add_album_deezer($1, $2, $3)")
             .bind(author)
@@ -66,6 +76,21 @@ impl PostgresDb {
             .await?;
 
         Ok(())
+    }
+
+
+
+    pub async fn get_full_album(&self, album_id: i64) -> SqlxResult<Option<FullAlbumResponse>> {
+        // We expect a single column containing JSON
+        let result: Option<(Json<FullAlbumResponse>,)> = sqlx::query_as(
+            "SELECT get_album_details_json($1)"
+        )
+            .bind(album_id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        // Unwrap the Sqlx Json wrapper to get your struct
+        Ok(result.map(|r| r.0.0))
     }
 
     pub async fn record_listening_deezer(&self, track_id: i64) -> Result<bool, sqlx::Error> {
