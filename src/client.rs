@@ -4,7 +4,7 @@ use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
 use domain::errors::db::sqlx_error::SqlxErrorWrapper;
 use domain::errors::db::user::UserCreationError;
 use domain::models::db::deezer::{AlbumInputDeezer, AlbumTableDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer, TrackTableDeezer};
-use domain::models::db::soundcloud::{AuthorInputSoundcloud, TrackInputSoundcloud, TrackTableSoundcloud};
+use domain::models::db::soundcloud::{AuthorInputSoundcloud, FullPlaylistResponse, PlaylistInputSoundcloud, TrackInputSoundcloud, TrackTableSoundcloud};
 use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
@@ -40,6 +40,36 @@ impl PostgresDb {
             .await?;
 
         Ok(())
+    }
+
+    pub async fn replace_or_create_playlist_soundcloud(
+        &self,
+        playlist: &PlaylistInputSoundcloud,
+        playlist_author: &AuthorInputSoundcloud,
+        tracks: &[TrackInputSoundcloud],
+        track_authors: &[AuthorInputSoundcloud],
+    ) -> SqlxResult<()> {
+        sqlx::query("CALL replace_or_create_playlist($1, $2, $3, $4)")
+            .bind(playlist)
+            .bind(playlist_author)
+            .bind(tracks)
+            .bind(track_authors)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn get_playlist_soundcloud(
+        &self,
+        id: i64
+    ) -> SqlxResult<Option<FullPlaylistResponse>> {
+        let res: Option<(Json<FullPlaylistResponse>,)> = sqlx::query_as("SELECT get_playlist_with_tracks($1)")
+            .bind(id)
+            .fetch_optional(&self.pool)
+            .await?;
+
+        Ok(res.map(|el| el.0.0))
     }
 
     // pub async fn get_track_soundcloud(&self, track_id: i64) -> SqlxResult<Option<TrackTableSoundcloud>> {
