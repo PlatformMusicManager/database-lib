@@ -1,10 +1,11 @@
+use std::collections::HashSet;
 use std::ops::Add;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{Duration, Utc};
 use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
 use domain::errors::db::sqlx_error::SqlxErrorWrapper;
 use domain::errors::db::user::UserCreationError;
-use domain::models::db::deezer::{AlbumInputDeezer, AlbumTableDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer, TrackTableDeezer};
-use domain::models::db::soundcloud::{AuthorInputSoundcloud, FullPlaylistResponse, PlaylistInputSoundcloud, TrackInputSoundcloud, TrackTableSoundcloud};
+use domain::models::db::deezer::{AlbumInputDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer};
+use domain::models::db::soundcloud::{AuthorInputSoundcloud, FullPlaylistResponse, FullTrackResponse, FullTracksResponse, PlaylistInputSoundcloud, TrackInputSoundcloud};
 use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::{Postgres, pool};
@@ -42,6 +43,45 @@ impl PostgresDb {
         Ok(())
     }
 
+    pub async fn get_track_full_soundcloud(&self, id: i64) -> SqlxResult<Option<FullTrackResponse>> {
+        // We use fetch_one because the function ALWAYS returns a row (either data or NULL)
+        // We cast the result to Option<Json<T>> to handle the SQL NULL safely
+        let track: Option<Json<FullTrackResponse>> =
+            sqlx::query_scalar("SELECT get_track_full_data_soundcloud($1)")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
+
+        Ok(track.map(|t| t.0))
+    }
+
+    pub async fn get_tracks_full_soundcloud(
+        &self,
+        track_ids: &[i64],
+    ) -> SqlxResult<FullTracksResponse> {
+        let result: Json<Vec<FullTrackResponse>> = sqlx::query_scalar("SELECT get_tracks_soundcloud_json($1)")
+            .bind(track_ids)
+            .fetch_one(&self.pool)
+            .await?;
+
+        let found_tracks = result.0;
+
+        // Create a Set of found IDs for fast lookup
+        let found_ids: HashSet<i64> = found_tracks.iter().map(|t| t.id).collect();
+
+        // Filter the input list
+        let not_found: Vec<i64> = track_ids
+            .iter()
+            .filter(|id| !found_ids.contains(id)) // Much faster
+            .cloned()
+            .collect();
+
+        Ok(FullTracksResponse {
+            not_found,
+            found: found_tracks,
+        })
+    }
+
     pub async fn replace_or_create_playlist_soundcloud(
         &self,
         playlist: &PlaylistInputSoundcloud,
@@ -64,12 +104,12 @@ impl PostgresDb {
         &self,
         id: i64
     ) -> SqlxResult<Option<FullPlaylistResponse>> {
-        let res: Option<(Json<FullPlaylistResponse>,)> = sqlx::query_as("SELECT get_playlist_with_tracks($1)")
+        let res: Option<Json<FullPlaylistResponse>> = sqlx::query_scalar("SELECT get_playlist_with_tracks($1)")
             .bind(id)
-            .fetch_optional(&self.pool)
+            .fetch_one(&self.pool)
             .await?;
 
-        Ok(res.map(|el| el.0.0))
+        Ok(res.map(|el| el.0))
     }
 
     // pub async fn get_track_soundcloud(&self, track_id: i64) -> SqlxResult<Option<TrackTableSoundcloud>> {
