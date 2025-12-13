@@ -89,7 +89,7 @@ impl PostgresDb {
         tracks: &[TrackInputSoundcloud],
         track_authors: &[AuthorInputSoundcloud],
     ) -> SqlxResult<()> {
-        sqlx::query("CALL replace_or_create_playlist($1, $2, $3, $4)")
+        sqlx::query("CALL replace_or_create_playlist_soundcloud($1, $2, $3, $4)")
             .bind(playlist)
             .bind(playlist_author)
             .bind(tracks)
@@ -104,7 +104,7 @@ impl PostgresDb {
         &self,
         id: i64
     ) -> SqlxResult<Option<FullPlaylistResponse>> {
-        let res: Option<Json<FullPlaylistResponse>> = sqlx::query_scalar("SELECT get_playlist_with_tracks($1)")
+        let res: Option<Json<FullPlaylistResponse>> = sqlx::query_scalar("SELECT get_playlist_with_tracks_soundcloud($1)")
             .bind(id)
             .fetch_one(&self.pool)
             .await?;
