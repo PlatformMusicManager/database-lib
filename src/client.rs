@@ -112,16 +112,6 @@ impl PostgresDb {
         Ok(res.map(|el| el.0))
     }
 
-    // pub async fn get_track_soundcloud(&self, track_id: i64) -> SqlxResult<Option<TrackTableSoundcloud>> {
-    //     let album = sqlx::query_as::<_, TrackTableSoundcloud>("SELECT * FROM tracks_soundcloud WHERE id = $1")
-    //         .bind(track_id)
-    //         .fetch_optional(&self.pool)
-    //         .await?;
-    //
-    //     Ok(album)
-    // }
-
-
     pub async fn record_listening_soundcloud(&self, track_id: i64) -> SqlxResult<bool> {
         let result: bool = sqlx::query_scalar("SELECT record_listen_soundcloud($1)")
             .bind(track_id)
