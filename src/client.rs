@@ -1,15 +1,20 @@
-use std::collections::HashSet;
-use std::ops::Add;
 use chrono::{Duration, Utc};
 use domain::errors::db::session::{SessionCreationError, SessionUpdateError};
 use domain::errors::db::sqlx_error::SqlxErrorWrapper;
 use domain::errors::db::user::UserCreationError;
-use domain::models::db::deezer::{AlbumInputDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer};
-use domain::models::db::soundcloud::{AuthorInputSoundcloud, FullPlaylistResponse, FullTrackResponse, FullTracksResponse, PlaylistInputSoundcloud, TrackInputSoundcloud};
+use domain::models::db::deezer::{
+    AlbumInputDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer,
+};
+use domain::models::db::soundcloud::{
+    AuthorInputSoundcloud, FullPlaylistResponse, FullTrackResponse, FullTracksResponse,
+    PlaylistInputSoundcloud, TrackInputSoundcloud,
+};
 use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
-use sqlx::{Postgres, pool};
 use sqlx::types::Json;
+use sqlx::{Postgres, pool};
+use std::collections::HashSet;
+use std::ops::Add;
 use uuid::Uuid;
 
 type SqlxResult<T> = Result<T, SqlxErrorWrapper>;
@@ -43,7 +48,10 @@ impl PostgresDb {
         Ok(())
     }
 
-    pub async fn get_track_full_soundcloud(&self, id: i64) -> SqlxResult<Option<FullTrackResponse>> {
+    pub async fn get_track_full_soundcloud(
+        &self,
+        id: i64,
+    ) -> SqlxResult<Option<FullTrackResponse>> {
         // We use fetch_one because the function ALWAYS returns a row (either data or NULL)
         // We cast the result to Option<Json<T>> to handle the SQL NULL safely
         let track: Option<Json<FullTrackResponse>> =
@@ -59,10 +67,11 @@ impl PostgresDb {
         &self,
         track_ids: &[i64],
     ) -> SqlxResult<FullTracksResponse> {
-        let result: Json<Vec<FullTrackResponse>> = sqlx::query_scalar("SELECT get_tracks_soundcloud_json($1)")
-            .bind(track_ids)
-            .fetch_one(&self.pool)
-            .await?;
+        let result: Json<Vec<FullTrackResponse>> =
+            sqlx::query_scalar("SELECT get_tracks_soundcloud_json($1)")
+                .bind(track_ids)
+                .fetch_one(&self.pool)
+                .await?;
 
         let found_tracks = result.0;
 
@@ -102,12 +111,13 @@ impl PostgresDb {
 
     pub async fn get_playlist_soundcloud(
         &self,
-        id: i64
+        id: i64,
     ) -> SqlxResult<Option<FullPlaylistResponse>> {
-        let res: Option<Json<FullPlaylistResponse>> = sqlx::query_scalar("SELECT get_playlist_with_tracks_soundcloud($1)")
-            .bind(id)
-            .fetch_one(&self.pool)
-            .await?;
+        let res: Option<Json<FullPlaylistResponse>> =
+            sqlx::query_scalar("SELECT get_playlist_with_tracks_soundcloud($1)")
+                .bind(id)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(res.map(|el| el.0))
     }
@@ -138,16 +148,13 @@ impl PostgresDb {
         Ok(())
     }
 
-
-
     pub async fn get_full_album(&self, album_id: i64) -> SqlxResult<Option<FullAlbumResponse>> {
         // We expect a single column containing JSON
-        let result: Option<(Json<FullAlbumResponse>,)> = sqlx::query_as(
-            "SELECT get_album_details_json($1)"
-        )
-            .bind(album_id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let result: Option<(Json<FullAlbumResponse>,)> =
+            sqlx::query_as("SELECT get_album_details_json($1)")
+                .bind(album_id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         // Unwrap the Sqlx Json wrapper to get your struct
         Ok(result.map(|r| r.0.0))
@@ -204,10 +211,12 @@ impl PostgresDb {
         Ok(user)
     }
 
-    pub async fn check_is_user_exists(&self, username: &str, email: &str) -> SqlxResult<IsUserExistsRes> {
-        let is_exists: i16 = sqlx::query_scalar(
-            "SELECT check_is_user_exists($1, $2)"
-        )
+    pub async fn check_is_user_exists(
+        &self,
+        username: &str,
+        email: &str,
+    ) -> SqlxResult<IsUserExistsRes> {
+        let is_exists: i16 = sqlx::query_scalar("SELECT check_is_user_exists($1, $2)")
             .bind(email)
             .bind(username)
             .fetch_one(&self.pool)
@@ -218,17 +227,16 @@ impl PostgresDb {
             1 => Ok(IsUserExistsRes::EmailExists),
             2 => Ok(IsUserExistsRes::UsernameExists),
             3 => Ok(IsUserExistsRes::EmailAndUsernameExists),
-            _ => panic!("Database return wrong data")
+            _ => panic!("Database return wrong data"),
         }
     }
 
     pub async fn get_user_with_playlists(&self, id: i64) -> SqlxResult<Option<UserWithPlaylists>> {
-        let user_record: Option<(Json<UserWithPlaylists>,)> = sqlx::query_as(
-            "SELECT get_user_with_playlists_json($1)"
-        )
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        let user_record: Option<(Json<UserWithPlaylists>,)> =
+            sqlx::query_as("SELECT get_user_with_playlists_json($1)")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?;
 
         Ok(user_record.map(|(json_wrapper,)| json_wrapper.0))
     }
@@ -249,7 +257,7 @@ impl PostgresDb {
         &self,
         id: Uuid,
         user_id: i64, // Using &str to match VARCHAR(18) in your SQL function
-        sn: Uuid
+        sn: Uuid,
     ) -> SqlxResult<Result<(), SessionCreationError>> {
         let expires_at = Utc::now().add(self.refresh_token_ttl);
         let result_code: i16 = sqlx::query_scalar("SELECT add_session($1, $2, $3, $4)")
@@ -292,10 +300,69 @@ impl PostgresDb {
             _ => panic!("UNEXPECTED RETURN VALUE"), // Handle any other unexpected codes
         }
     }
-    
+
     pub async fn remove_session(&self, id: Uuid) -> SqlxResult<()> {
         sqlx::query("DELETE FROM app_sessions WHERE id = $1;")
             .bind(id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    // --- PLAYLISTS ---
+
+    pub async fn create_playlist(&self, title: &str, owner_id: i64) -> SqlxResult<i64> {
+        let id: i64 = sqlx::query_scalar(
+            "INSERT INTO user_playlist (title, owner_id) VALUES ($1, $2) RETURNING id",
+        )
+        .bind(title)
+        .bind(owner_id)
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(id)
+    }
+
+    pub async fn delete_playlist(&self, playlist_id: i64) -> SqlxResult<()> {
+        sqlx::query("DELETE FROM user_playlist WHERE id = $1")
+            .bind(playlist_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn add_track_to_playlist(
+        &self,
+        playlist_id: i64,
+        track_id: i64,
+        platform: domain::models::db::user::TrackPlatform,
+    ) -> SqlxResult<i64> {
+        let id: i64 = sqlx::query_scalar("SELECT add_track_to_playlist($1, $2, $3)")
+            .bind(playlist_id)
+            .bind(track_id)
+            .bind(platform)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(id)
+    }
+
+    pub async fn remove_track_from_playlist(&self, track_in_playlist_id: i64) -> SqlxResult<()> {
+        sqlx::query("CALL remove_track_from_playlist($1)")
+            .bind(track_in_playlist_id)
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn change_track_position(
+        &self,
+        track_in_playlist_id: i64,
+        new_position: i32,
+    ) -> SqlxResult<()> {
+        sqlx::query("CALL change_track_position($1, $2)")
+            .bind(track_in_playlist_id)
+            .bind(new_position)
             .execute(&self.pool)
             .await?;
         Ok(())
