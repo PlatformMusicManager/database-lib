@@ -194,7 +194,7 @@ impl PostgresDb {
     }
 
     pub async fn get_user_by_id(&self, id: i64) -> SqlxResult<Option<UserTable>> {
-        let user = sqlx::query_as("SELECT * FROM app_user WHERE id = $1")
+        let user = sqlx::query_as("SELECT * FROM app_users WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool) // Assuming `self.pool` is the database connection pool
             .await?;
@@ -203,7 +203,7 @@ impl PostgresDb {
     }
 
     pub async fn get_user_by_email(&self, email: String) -> SqlxResult<Option<UserTable>> {
-        let user = sqlx::query_as("SELECT * FROM app_user WHERE email = $1")
+        let user = sqlx::query_as("SELECT * FROM app_users WHERE email = $1")
             .bind(email)
             .fetch_optional(&self.pool) // Assuming `self.pool` is the database connection pool
             .await?;
