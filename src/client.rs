@@ -347,9 +347,14 @@ impl PostgresDb {
         Ok(id)
     }
 
-    pub async fn remove_track_from_playlist(&self, track_in_playlist_id: i64) -> SqlxResult<()> {
-        sqlx::query("CALL remove_track_from_playlist($1)")
+    pub async fn remove_track_from_playlist(
+        &self,
+        track_in_playlist_id: i64,
+        user_id: i64,
+    ) -> SqlxResult<()> {
+        sqlx::query("CALL remove_track_from_playlist($1, $2)")
             .bind(track_in_playlist_id)
+            .bind(user_id)
             .execute(&self.pool)
             .await?;
         Ok(())
