@@ -6,8 +6,8 @@ use domain::models::db::deezer::{
     AlbumInputDeezer, AuthorInputDeezer, FullAlbumResponse, TrackInputDeezer,
 };
 use domain::models::db::soundcloud::{
-    AuthorInputSoundcloud, FullPlaylistResponse, FullTrackResponse, FullTracksResponse,
-    PlaylistInputSoundcloud, TrackInputSoundcloud,
+    AuthorInputSoundcloud, FullTracksResponse, PlaylistInputSoundcloud,
+    SoundcloudFullPlaylistResponse, SoundcloudFullTrackResponse, TrackInputSoundcloud,
 };
 use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
@@ -51,10 +51,10 @@ impl PostgresDb {
     pub async fn get_track_full_soundcloud(
         &self,
         id: i64,
-    ) -> SqlxResult<Option<FullTrackResponse>> {
+    ) -> SqlxResult<Option<SoundcloudFullTrackResponse>> {
         // We use fetch_one because the function ALWAYS returns a row (either data or NULL)
         // We cast the result to Option<Json<T>> to handle the SQL NULL safely
-        let track: Option<Json<FullTrackResponse>> =
+        let track: Option<Json<SoundcloudFullTrackResponse>> =
             sqlx::query_scalar("SELECT get_track_full_data_soundcloud($1)")
                 .bind(id)
                 .fetch_one(&self.pool)
@@ -66,8 +66,8 @@ impl PostgresDb {
     pub async fn get_tracks_full_soundcloud(
         &self,
         track_ids: &[i64],
-    ) -> SqlxResult<FullTracksResponse> {
-        let result: Json<Vec<FullTrackResponse>> =
+    ) -> SqlxResult<FullTracksResponse<SoundcloudFullTrackResponse>> {
+        let result: Json<Vec<SoundcloudFullTrackResponse>> =
             sqlx::query_scalar("SELECT get_tracks_soundcloud_json($1)")
                 .bind(track_ids)
                 .fetch_one(&self.pool)
@@ -76,7 +76,7 @@ impl PostgresDb {
         let found_tracks = result.0;
 
         // Create a Set of found IDs for fast lookup
-        let found_ids: HashSet<i64> = found_tracks.iter().map(|t| t.id).collect();
+        let found_ids: HashSet<i64> = found_tracks.iter().map(|t| t.0.id).collect();
 
         // Filter the input list
         let not_found: Vec<i64> = track_ids
@@ -112,8 +112,8 @@ impl PostgresDb {
     pub async fn get_playlist_soundcloud(
         &self,
         id: i64,
-    ) -> SqlxResult<Option<FullPlaylistResponse>> {
-        let res: Option<Json<FullPlaylistResponse>> =
+    ) -> SqlxResult<Option<SoundcloudFullPlaylistResponse>> {
+        let res: Option<Json<SoundcloudFullPlaylistResponse>> =
             sqlx::query_scalar("SELECT get_playlist_with_tracks_soundcloud($1)")
                 .bind(id)
                 .fetch_one(&self.pool)
