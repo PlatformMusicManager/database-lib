@@ -9,7 +9,7 @@ use domain::models::db::soundcloud::{
     AuthorInputSoundcloud, FullTracksResponse, PlaylistInputSoundcloud,
     SoundcloudFullPlaylistResponse, SoundcloudFullTrackResponse, TrackInputSoundcloud,
 };
-use domain::models::db::user::{IsUserExistsRes, UserTable, UserWithPlaylists};
+use domain::models::db::user::{IsUserExistsRes, UserPlaylistWithTracks, UserTable, UserWithPlaylists};
 use sqlx::postgres::PgPoolOptions;
 use sqlx::types::Json;
 use sqlx::{Postgres, pool};
@@ -371,5 +371,18 @@ impl PostgresDb {
             .execute(&self.pool)
             .await?;
         Ok(())
+    }
+
+    pub async fn get_user_playlist_with_tracks(
+        &self,
+        playlist_id: i64,
+    ) -> SqlxResult<Option<UserPlaylistWithTracks>> {
+        let result: Option<(Json<UserPlaylistWithTracks>,)> =
+            sqlx::query_as("SELECT get_user_playlist_with_tracks_json($1)")
+                .bind(playlist_id)
+                .fetch_optional(&self.pool)
+                .await?;
+
+        Ok(result.map(|r| r.0.0))
     }
 }
